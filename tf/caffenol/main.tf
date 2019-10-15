@@ -11,6 +11,15 @@ provider "aws" {
   region = "us-west-2"
 }
 
+data "terraform_remote_state" "lindome_domain" {
+  backend = "s3"
+  config = {
+    bucket = "thousandleaves-terraform"
+    key    = "lindome/domain.tfstate"
+    region = "us-west-2"
+  }
+}
+
 data "aws_iam_policy_document" "caffenol_s3_bucket_policy" {
   statement {
     actions   = ["s3:GetObject"]
@@ -32,6 +41,7 @@ data "aws_iam_policy_document" "caffenol_s3_bucket_policy" {
 
 locals {
   origin_id = "caffenolS3Origin"
+  domain_name = "pic.${data.terraform_remote_state.lindome_domain.outputs.treepotato_domain_name}"
 }
 
 resource "aws_s3_bucket" "bucket" {
@@ -64,6 +74,8 @@ resource "aws_cloudfront_distribution" "caffenol_s3" {
       origin_access_identity = "${aws_cloudfront_origin_access_identity.oai.cloudfront_access_identity_path}"
     }
   }
+  aliases = [ "pic.treepotato.com" ]  # !! Can this be locals.domain_name?
+
 
   enabled             = true
   is_ipv6_enabled     = true
@@ -94,7 +106,20 @@ resource "aws_cloudfront_distribution" "caffenol_s3" {
   }
 
   viewer_certificate {
-    cloudfront_default_certificate = true
+    acm_certificate_arn = data.terraform_remote_state.lindome_domain.outputs.treepotato_acm_arn
+    ssl_support_method  = "sni-only"
+  }
+}
+
+resource "aws_route53_record" "pic_treepotato" {
+  zone_id = data.terraform_remote_state.lindome_domain.outputs.treepotato_zone_id
+  name    = local.domain_name
+  type    = "A"
+
+  alias {
+    evaluate_target_health = true
+    zone_id                = aws_cloudfront_distribution.caffenol_s3.hosted_zone_id
+    name                   = aws_cloudfront_distribution.caffenol_s3.domain_name
   }
 }
 
