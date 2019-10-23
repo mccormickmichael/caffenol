@@ -74,7 +74,7 @@ resource "aws_cloudfront_distribution" "caffenol_s3" {
       origin_access_identity = "${aws_cloudfront_origin_access_identity.oai.cloudfront_access_identity_path}"
     }
   }
-  aliases = [ "pic.treepotato.com" ]  # !! Can this be locals.domain_name?
+  aliases = [ "pic.treepotato.com" ]
 
 
   enabled             = true
