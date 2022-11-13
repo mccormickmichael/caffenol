@@ -1,9 +1,15 @@
 terraform {
+  required_providers {
+    aws = {
+      source = "hashicorp/aws"
+      version = "4.39.0"
+    }
+  }
   backend "s3" {
     bucket         = "thousandleaves-terraform"
     key            = "caffenol/caffenol.tfstate"
     region         = "us-west-2"
-    dynamodb_table = "terraform-state-lock"
+    # dynamodb_table = "terraform-state-lock"
   }
 }
 
@@ -46,7 +52,9 @@ locals {
 
 resource "aws_s3_bucket" "bucket" {
   bucket = "thousandleaves-caffenol"
-  region = "us-west-2"
+  tags = {
+    TerraformState = "caffenol"
+  }
 }
 
 resource "aws_s3_bucket_public_access_block" "bucket_block" {
@@ -108,6 +116,10 @@ resource "aws_cloudfront_distribution" "caffenol_s3" {
   viewer_certificate {
     acm_certificate_arn = data.terraform_remote_state.lindome_domain.outputs.treepotato_acm_arn
     ssl_support_method  = "sni-only"
+  }
+
+  tags = {
+    TeraformState = "caffenol"
   }
 }
 
